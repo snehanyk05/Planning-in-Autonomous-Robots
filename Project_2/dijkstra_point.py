@@ -25,8 +25,8 @@ import matplotlib.animation as animation
 
 from shapely.geometry import Point, Polygon
 import time
-title='Click point in map to select initial point.'
-
+title='Click point in map to select Initial/Final point.'
+arr=[]
 root= tk.Tk()
 class Node:
     def __init__(self, node, cost,x,y):
@@ -61,66 +61,83 @@ def onpick(event):
     if(not(init)):
         print('init')
         init=[int(event.xdata),int(event.ydata)]
-        title='Click point in map to select initial point.' 
+        
     else:
         print('final')
         final=[int(event.xdata),int(event.ydata)]
-        title='Choose algorithm.' 
-    # init=[0,0]
-    # final=[40,43]
+        
+    title='Node Exploration'
     return True
-def updateMinMax(x,y,arr):
-        if(x>arr[2]):
+
+def updateMinMax(arr,minx,miny,maxx,maxy,d):
+        if(maxx>arr[2]):
 #            print('x max')
-            arr[2]=x+1
-        if(x<arr[0]):
+            arr[2]=maxx+1+d
+        if(minx<arr[0]):
 #            print('x min')
-            arr[0]=x-1
-        if(y>arr[3]):
+            arr[0]=minx-1-d
+        if(maxy>arr[3]):
 #            print('y max')
-            arr[3]=y+1
-        if(y<arr[1]):
+            arr[3]=maxy+1+d
+        if(miny<arr[1]):
 #            print('y min')
-            arr[1]=y-1
+            arr[1]=miny-1-d
             
-def pathAvailability(x,y,arr,pol):
+def pathAvailability(x,y,arr,pol,maxPx,minPx,maxPy,minPy):
     """
     Box
     """
     global radius,clearance,resolution
     d=radius+clearance
-    if(((y-((112.5/resolution)+d))<=0) and ((x-((100/resolution)+d))<=0) and ((-y+((67.5/resolution)-d))<=0) and ((-x+((50/resolution)-d))<=0)):
-        
-         updateMinMax(x,y,arr)
-         return 0
-    p2 = Point(x,y)
 
+    if(((y-((112.5/resolution)+d))<=0) and ((x-((100/resolution)+d))<=0) and ((-y+((67.5/resolution)-d))<=0) and ((-x+((50/resolution)-d))<=0)):
+
+         maxBx=100
+         minBx=50
+         maxBy=112.5
+         minBy=67.5
+         
+         updateMinMax(arr,minBx,minBy,maxBx,maxBy,d)
+         return 0
+    #     xpolygon=[120,158, 165,188,168,145];
+# %   ypolygon=[55,51,89,51,14,14];
+    # % Line 2 with coordinates (125,56) and (150,15)
+    p2 = Point(x,y)
+   
     for i in pol:
         coords = i
         poly = Polygon(i)
+
         inside2 = p2.within(poly)
         if(inside2==True):
             break
  
        
     if(inside2==True):
-            print(x,y,'in poly')
-            updateMinMax(x,y,arr)
+            updateMinMax(arr,minPx,minPy,maxPx,maxPy,d)
             return 0
     if((((math.pow((x-(140/resolution)),2)/math.pow(((15/resolution)+d),2))+(math.pow((y-(120/resolution)),2)/math.pow(((6/resolution)+d),2))-1)<=0)):
-        updateMinMax(x,y,arr)
-        # print(x,y,'in ellipse')
+        maxEx=140+15
+        minEx=140-15
+        maxEy=120+6
+        minEy=120-6
+       
+        updateMinMax(arr,minEx,minEy,maxEx,maxEy,d)
+        
         return 0
     if((((math.pow((x-(190/resolution)),2))+(math.pow((y-(130/resolution)),2))-(math.pow(((15/resolution)+d),2)))<=0)):
-        updateMinMax(x,y,arr)
-        # print(x,y,'in circle')
+        maxCx=190+15
+        minCx=190-15
+        maxCy=130+15
+        minCy=130-15
+        
+        updateMinMax(arr,minCx,minCy,maxCx,maxCy,d)
+        
         return 0
     
     else:
         
         return 1
-   
-    
            
 def make_edge(start, end, cost=1):
   return Edge(start, end, cost)
@@ -134,7 +151,7 @@ def getKey(item):
 def dijkstra(graph,f,t,paths_to_goal,tempx,tempy,weightx,weighty,costw,final,pol):
     path=[]
     paths_to_goal=[]
-    
+
     
     count=-1
     path=0
@@ -142,20 +159,26 @@ def dijkstra(graph,f,t,paths_to_goal,tempx,tempy,weightx,weighty,costw,final,pol
     queue.append((tempx,tempy))
     g = defaultdict(list)
     
-    q,seen,mins= [(0,Node(f,0,tempx,tempy))],set(), {f: 0}
+    q,seen,mins,queue= [(0,Node(f,0,tempx,tempy))],set(), {f: 0},[(0,f)]
     nodes=[]
 
     count=0
-    while q:
+    nodes.append(Node(f,0,tempx,tempy))
+    node=''
+    while (q and node!=t):
+        (cost1,node)=heappop(queue)
+       
+        index= [i for ((c,y), i) in zip(q, range(len(q))) if node==y.node]
         
-        (cost,v1) = q.pop(0)
-        nodes.append(v1)
-        temp_trav(weightx,weighty,costw,final,graph,g,q,v1,seen,mins,pol)
+        (cost,v1) = q.pop(index[0])
         
+
+        temp_trav(weightx,weighty,costw,final,graph,g,q,queue,nodes,v1,seen,mins,pol)
+
     
         
     ans= [v for  v in (nodes) if v.node == t]
-    
+    print(ans)
     if(len(ans)>0):
         return nodes,ans[0]
     else:
@@ -175,14 +198,16 @@ def animate(listPnts):
     
     for i in (listPnts):
         ax.fill(i[0],i[1], color = i[2])
+
     ax.legend() 
     ax.set_title(title);
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
-   
+    
+
     fig.canvas.mpl_connect('button_press_event',onpick)
 
-    
+
 
 
     tk.Label(root, text="Enter Coordinates").pack()
@@ -198,57 +223,137 @@ def animate(listPnts):
         final_str=str(final[0])+' '+str(final[1])
         final1.insert(0,final_str)
     final1.pack()
-    
 
     tk.Button(root, text="Quit", command= lambda:quit(initial,final1)).pack()
    
-    root.mainloop()   
+    root.mainloop()
+       
     return listPnts
 
-    
+
+xdata=[]
+ydata=[]    
 def animated(i,nodes,node,test):
+    global xdata,ydata
+    t, y = i.x,i.y
+    xdata.append(t)
+    ydata.append(y)
+    xmin, xmax = ax.get_xlim()
+
+    if t >= xmax:
+        ax.set_xlim(xmin, 2*xmax)
+        ax.figure.canvas.draw()
+    line.set_data(xdata, ydata)
+
     
-    if(i):
-        if(((nodes[0].x) == i.x) and (nodes[0].y == i.y)):
-          ax.scatter(int(i.x), int(i.y),s=5,c='r')
-        else:
-            ax.scatter(int(i.x), int(i.y),s=5,c='y')
-            
-        if(((nodes[len(nodes)-1].x) == i.x) and (nodes[len(nodes)-1].y == i.y)):
+    
+    if(((nodes[len(nodes)-1].x) == i.x) and (nodes[len(nodes)-1].y == i.y)):
           node.PrintTree(ax)
-          
-        
+    return line,           
+
 def quit(initial,final1):
-    global root,init,final,radius,resolution,clearance
+    global root,init,final,radius,resolution,clearance,arr
+
+    
     resolution=1
     if(initial.get()):
-        x,y=(initial.get()).split(',')
-        init=[int(int(x)/resolution),int(int(y)/resolution)]
+            if(len((initial.get()).split(','))==2):
+
+                x,y=(initial.get()).split(',')
+                if(x and y and (int(x)) and (int(y))):
+                    init=[int(int(x)/resolution),int(int(y)/resolution)]
+                else:
+                    root.quit()
+                    root.destroy()
+                    test=tk.Tk()
+                    test.geometry('400x300')
+                    label = Label(test, text= "Please enter valid Initial Point.")
+
+                    label.pack() 
+
+                    test.mainloop()
+            else:
+                    root.quit()
+                    root.destroy()
+                    test=tk.Tk()
+                    test.geometry('400x300')
+                    label = Label(test, text= "Please enter valid comma separated Initial Point.")
+
+                    label.pack() 
+
+                    test.mainloop()
+
     elif(init):
-        
-        init=[int(init[0]/resolution),int(init[1]/resolution)]
-        print('Init in quit',init)
-    
+            
+            init=[int(init[0]/resolution),int(init[1]/resolution)]
+            
+    else:
+            root.quit()
+            root.destroy()
+            test=tk.Tk()
+            test.geometry('400x300')
+            label = Label(test, text= "Please enter valid Initial Point.")
+
+            label.pack() 
+
+            test.mainloop()
+
     if(final1.get()):
-        x1,y1=(final1.get()).split(',')
-        final=[int(int(x1)/resolution),int(int(y1)/resolution)]
+            if(len((final1.get()).split(','))==2):
+                x1,y1=(final1.get()).split(',')
+                if(x1 and y1 and (int(x1)) and (int(y1))):
+                    final=[int(int(x1)/resolution),int(int(y1)/resolution)]
+                else:
+                    root.quit()
+                    root.destroy()
+                    test=tk.Tk()
+                    test.geometry('400x300')
+                    label = Label(test, text= "Please enter valid Final Point.")
+
+                    label.pack() 
+
+                    test.mainloop()
+            else:
+                    root.quit()
+                    root.destroy()
+                    test=tk.Tk()
+                    test.geometry('400x300')
+                    label = Label(test, text= "Please enter valid comma separated Final Point.")
+
+                    label.pack() 
+
+                    test.mainloop()
     elif(final):
-        final=[int(final[0]/resolution),int(final[1]/resolution)]
-    
-    
+                final=[int(final[0]/resolution),int(final[1]/resolution)]
+
+    else:
+                root.quit()
+                root.destroy()
+                test=tk.Tk()
+                test.geometry('400x300')
+                label = Label(test, text= "Please enter valid Final Point.")
+
+                label.pack() 
+
+                test.mainloop()    
     radius=0
     clearance=0
     root.quit()
     root.destroy()
+    minx = min(final[0],init[0])-1
+    miny = min(final[1],init[1])-1
+    maxx= max(final[0],init[0])+1
+    maxy= max(final[1],init[1])+1
+    arr=[minx,miny,maxx,maxy]
+      
     
-    
-def temp_trav(weightx,weighty,cost,final,graph,g,q,parent,seen,mins,pol):
-    
+def temp_trav(weightx,weighty,cost,final,graph,g,q,queue,nodes,parent,seen,mins,pol):
+    global arr,maxPx,minPx,maxPy,minPy
     flag=0
     tempx=parent.x
     tempy=parent.y
     global radius,clearance,resolution
-
+    d=radius+clearance
     minx = min(final[0],init[0])-1
     miny = min(final[1],init[1])-1
     maxx= max(final[0],init[0])+1
@@ -258,20 +363,26 @@ def temp_trav(weightx,weighty,cost,final,graph,g,q,parent,seen,mins,pol):
                 
                 x=tempx+weightx[i]
                 y=tempy+weighty[i]
-                
+
                 costw=cost[i]
                 a=str(tempx)+' '+str(tempy)
                 b=str(x)+' '+str(y)
                 tup=(a,b,costw)
                 tupin=(b,a,costw)
                 
-                if((tup not in graph) and (tupin not in graph) and (x>=0 and x<=((250/resolution)+radius) and y>=0 and y<=((150/resolution)+radius))):
 
-                    arr=[minx,miny,maxx,maxy]
-                    if((pathAvailability(x,y,arr,pol)==1) and (x>=(minx) and y>=(miny)) and ( x<=(maxx) and y<=(maxy) )):  
-                       
+                if((tup not in graph) and (tupin not in graph) and (x>=0 and x<=((250/resolution)+radius) and y>=0 and y<=((150/resolution)+radius)) and (((x+d)<=(250/resolution)) and ((y+d)<=(150/resolution)) and ((x-d)>=(0/resolution)) and ((y-d)>=(0/resolution)))):
+
+
+                    
+
+                    if(((pathAvailability(x,y,arr,pol,maxPx,minPx,maxPy,minPy))==1) and (x>=(arr[0]) and y>=(arr[1])) and ( x<=(arr[2]) and y<=(arr[3]) )):
+
                         graph.append(tup)
+
                         test.append((x,y))
+
+
                         if(b not in seen):
                             seen.add(b)
                             
@@ -279,16 +390,21 @@ def temp_trav(weightx,weighty,cost,final,graph,g,q,parent,seen,mins,pol):
                             v2=(Node(b,(next),x,y))
                             v2.parent=parent
                             mins[b] = next
+                            nodes.append(v2)
                             q.append((next,v2))
+                            heappush(queue, (next, b))
                         else:
-                            ans= [v for i, v in (q) if v.node == b]
+                            ans= [v for v in (nodes) if v.node == b]
+                            # ans1= [i for i, v in (queue) if v == b]
                             prev = mins.get(b, None)
                             next = (costw+parent.cost)
                             if prev is None or next < prev:
                                     ans[0].parent=parent
                                     mins[b] = next
-                                    
+                                    # ans1[0]=next
+
                                     ans[0].cost=next
+
                     else:
                         minx=arr[0]
                         miny=arr[1]
@@ -308,6 +424,7 @@ u=140     #x-position of the center
 v=120    #y-position of the center
 a=15    #radius on the x-axis
 b=6    #radius on the y-axis
+
 p=n+r*np.cos(t)
 q=m+r*np.sin(t)
 r=u+a*np.cos(t)
@@ -416,29 +533,45 @@ ax.fill(ucirx, uciry,'b')
 ax.fill(p,q,'r')
 ax.fill(uelpx, uelpy,'b')
 ax.fill(r,s,'r')
-print(testing[0].get_xy())
+
 
 xs=[]
 ys=[]
 k=0
 pol=[]
 for i in testing:
-    # print('Is',i)
-    arr=i.get_xy()
-    print('arr',arr)
+
+    array=i.get_xy()
+
     polygon_vertices=[]
-    for j in arr:
-        # ax.clear()
-        print(j[0])
+    for j in array:
+
+
         polygon_vertices.append((j[0],j[1]))
-            # xs.append(j[0])
-            # ys.append(j[1])
+
     pol.append(polygon_vertices)
 
 
 
-
-
+maxPx=0
+minPx=250
+maxPy=0
+minPy=150
+for i in pol:
+        coords = i
+        poly = Polygon(i)
+        for j in i:
+            
+            if(minPx>j[0]):
+                
+                minPx=j[0]
+            if(maxPx<j[0]):
+                maxPx=j[0]
+            if(minPy>j[1]):
+                minPy=j[1]
+            if(maxPy<j[1]):
+                maxPy=j[1]
+print(minPx,minPy,maxPx,maxPy)
 obstacles=[[uboxx, uboxy],[upolx, upoly],[ucirx, uciry],[uelpx, uelpy]]
 weightx=[0,1,1,1,0,-1,-1,-1]
 weighty=[1,1,0,-1,-1,-1,0,1]
@@ -454,38 +587,52 @@ pathy=[]
 paths_to_goal=[]
 
 plt.tick_params(axis='both', which='major', labelsize=9)
-nodes,node=dijkstra(graph,str(init[0])+' '+str(init[1]),
-                        str(final[0])+' '+str(final[1]),paths_to_goal,tempx,tempy,weightx,weighty,cost,final,pol)
-if(node==0):
-    test=tk.Tk()
-    test.geometry('400x300')
-    label = Label(test, text= nodes)
-    label.pack() 
-    test.mainloop()
-else:
-    listPnts=[[uboxx, uboxy,'b'],[x, y,'r'],[upolx, upoly,'b'], [px, py,'r'],[ucirx, uciry,'b'],[p,q,'r'],[uelpx, uelpy,'b'],[r,s,'r']]
-    test=tk.Tk()
-    fig = plt.Figure(figsize=(5,4), dpi=100)
-    ax = fig.add_subplot(111)
-    scatter = FigureCanvasTkAgg(fig, test) 
-    scatter.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH)
-           
-    for i in (listPnts):
-            ax.fill(i[0],i[1], color = i[2])
-                
-    ax.legend()
-    ax.grid(color=(0,0,0), linestyle='-', linewidth=1) 
-        # ax.set_facecolor((0, 0, 0))
-    ax.set_title(title);
-    ax.set_xlabel('X axis')
-    ax.set_ylabel('Y axis')
-     
-    ani = animation.FuncAnimation(fig, animated, nodes, fargs=(nodes, node,test),repeat=False)
+print("Processing.....")
+if(init and final):
+    nodes,node=dijkstra(graph,str(init[0])+' '+str(init[1]),
+                            str(final[0])+' '+str(final[1]),paths_to_goal,tempx,tempy,weightx,weighty,cost,final,pol)
+    if(node==0):
+        test=tk.Tk()
+        test.geometry('400x300')
+        label = Label(test, text= nodes)
+
+        label.pack() 
+
+        test.mainloop()
+    else:
+        listPnts=[[uboxx, uboxy,'b'],[x, y,'r'],[upolx, upoly,'b'], [px, py,'r'],[ucirx, uciry,'b'],[p,q,'r'],[uelpx, uelpy,'b'],[r,s,'r']]
+        test=tk.Tk()
+        fig = plt.Figure(figsize=(5,4), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        line, = ax.plot([], [], 'y.',lw=0.3, alpha=0.2)
+        ax.grid()
+
+        scatter = FigureCanvasTkAgg(fig, test) 
+        scatter.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH)
     
+        for i in (listPnts):
+                ax.fill(i[0],i[1], color = i[2])
+                    
 
-  
-    test.mainloop()
+        ax.legend()
+        ax.grid(color=(0,0,0), linestyle='-', linewidth=1) 
+
+        ax.set_title(title);
+        ax.set_xlabel('X axis')
+        ax.set_ylabel('Y axis')
+
+        ani = animation.FuncAnimation(fig, animated, nodes, fargs=(nodes, node,test), interval=10,repeat=False, blit=False)
 
 
 
+    
+        test.mainloop()
+else:
+        test=tk.Tk()
+        test.geometry('400x300')
+        label = Label(test, text= "Please check validity if Initial/Goal Coordinates, Resolution, Radius or Clearance.")
 
+        label.pack() 
+
+        test.mainloop()
